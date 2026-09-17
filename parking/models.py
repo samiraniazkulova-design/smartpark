@@ -97,6 +97,10 @@ class Booking(models.Model):
 
     class Meta:
         ordering = ["-start_time"]
+        indexes = [
+            models.Index(fields=["spot", "is_active", "end_time"], name="booking_spot_active_idx"),
+            models.Index(fields=["user", "is_active", "start_time"], name="booking_user_active_idx"),
+        ]
         constraints = [
             models.CheckConstraint(condition=Q(end_time__gt=models.F("start_time")), name="booking_end_after_start")
         ]

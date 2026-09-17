@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from parking.models import ParkingLocation, ParkingSpot
+from parking.models import Booking, ParkingLocation, ParkingSpot
 
 
 LOCATIONS = (
@@ -16,6 +16,11 @@ class Command(BaseCommand):
     help = "Create or update SmartPark Bishkek parking locations and spots."
 
     def handle(self, *args, **options):
+        for legacy_name in ("Vefa",):
+            legacy = ParkingLocation.objects.filter(name=legacy_name).first()
+            if legacy and not Booking.objects.filter(spot__location=legacy).exists():
+                legacy.delete()
+
         for name, address, latitude, longitude, spot_count in LOCATIONS:
             location, created = ParkingLocation.objects.update_or_create(
                 name=name,

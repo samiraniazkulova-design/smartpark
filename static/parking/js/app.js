@@ -1,5 +1,6 @@
 ﻿const root = document.documentElement;
 const themeToggle = document.querySelector('.theme-toggle');
+const soundToggle = document.getElementById('sound-toggle');
 const screenNodes = document.querySelectorAll('.screen');
 const navButtons = document.querySelectorAll('.nav-item');
 const authTabs = document.querySelectorAll('.tab');
@@ -11,11 +12,13 @@ const saveCardBtn = document.querySelector('.save-card-btn');
 const cardMessage = document.getElementById('card-message');
 const continueBtn = document.querySelector('.pay-btn');
 const locationInput = document.getElementById('location-search');
+const searchMessage = document.getElementById('search-message');
 const mapModeButton = document.getElementById('map-mode');
 const authSubmit = document.querySelector('.auth-submit');
 const otpSubmit = document.querySelector('.otp-submit');
 const authMessage = document.getElementById('auth-message');
 const bookingMessage = document.getElementById('booking-message');
+const bookingStatus = document.getElementById('booking-status');
 const signupFields = document.querySelectorAll('.signup-only');
 const otpBoxes = document.getElementById('otp-boxes');
 const paymentMethods = document.querySelectorAll('.payment-method');
@@ -37,9 +40,41 @@ let selectedSpotId = null;
 let selectedPaymentMethod = 'mbank';
 let selectedLocationCard = null;
 let selectedDuration = 1;
+let bookingSubmitting = false;
+let audioContext;
+let soundEnabled = localStorage.getItem('smartpark-sound') !== 'off';
+
+function playUiSound(type = 'click') {
+    if (!soundEnabled) return;
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') audioContext.resume();
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+    const frequency = type === 'success' ? 660 : type === 'error' ? 180 : 420;
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, now);
+    oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.12, now + 0.08);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(type === 'success' ? 0.08 : 0.045, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.13);
+}
+
+function updateSoundButton() {
+    if (!soundToggle) return;
+    soundToggle.setAttribute('aria-pressed', String(soundEnabled));
+    soundToggle.innerHTML = soundEnabled ? '<span class="sound-icon">♪</span>' : '<span class="sound-icon">×</span>';
+}
+
+updateSoundButton();
 let streetLayer;
 let satelliteLayer;
 let satelliteMode = false;
+const locationMarkers = new Map();
 
 const translations = {
     ky: {
@@ -53,7 +88,7 @@ const translations = {
         baseRate: 'Негизги тариф', serviceFee: 'Кызмат акысы', tripTotal: 'Жалпы сумма', confirmPayment: 'Төлөмдү ырастоо',
         home: 'Башкы бет', auth: 'Кирүү', card: 'Карта', map: 'Карта', book: 'Бронь', profile: 'Профиль', account: 'Аккаунт',
         history: 'Брондор тарыхы', noBookings: 'Азырынча брондор жок', logout: 'Чыгуу', loginToProfile: 'Профилди көрүү үчүн кириңиз',
-        walletBalance: 'Капчыктагы баланс', refresh: 'Жаңыртуу', cancel: 'Жокко чыгаруу', saveProfile: 'Профилди сактоо', changePassword: 'Сырсөздү өзгөртүү', currentPassword: 'Учурдагы сырсөз', newPassword: 'Жаңы сырсөз', confirmPassword: 'Жаңы сырсөздү кайталаңыз', updatePassword: 'Сырсөздү жаңыртуу', mbankHint: 'MBank QR аркылуу демо-төлөм', optimaHint: 'Optima QR аркылуу демо-төлөм', walletHint: 'Капчыктан төлөө', cardHint: 'Сакталган карта менен төлөө'
+        walletBalance: 'Капчыктагы баланс', refresh: 'Жаңыртуу', cancel: 'Жокко чыгаруу', saveProfile: 'Профилди сактоо', changePassword: 'Сырсөздү өзгөртүү', currentPassword: 'Учурдагы сырсөз', newPassword: 'Жаңы сырсөз', confirmPassword: 'Жаңы сырсөздү кайталаңыз', updatePassword: 'Сырсөздү жаңыртуу', openStatus: 'Ачык', reservedStatus: 'Брондолду', mbankHint: 'MBank QR аркылуу демо-төлөм', optimaHint: 'Optima QR аркылуу демо-төлөм', walletHint: 'Капчыктан төлөө', cardHint: 'Сакталган карта менен төлөө', searching: 'Изделүүдө...', notFound: 'Дарек табылган жок', searchError: 'Издөөдө ката кетти'
     },
     ru: {
         premiumParking: 'Премиум парковка', heroText: 'Забронируйте безопасное место и экономьте время в городе.',
@@ -66,7 +101,7 @@ const translations = {
         baseRate: 'Базовый тариф', serviceFee: 'Сервисный сбор', tripTotal: 'Итого', confirmPayment: 'Подтвердить оплату',
         home: 'Главная', auth: 'Вход', card: 'Карта', map: 'Карта', book: 'Бронь', profile: 'Профиль', account: 'Аккаунт',
         history: 'История бронирований', noBookings: 'Бронирований пока нет', logout: 'Выйти', loginToProfile: 'Войдите, чтобы открыть профиль',
-        walletBalance: 'Баланс кошелька', refresh: 'Обновить', cancel: 'Отменить', saveProfile: 'Сохранить профиль', changePassword: 'Изменить пароль', currentPassword: 'Текущий пароль', newPassword: 'Новый пароль', confirmPassword: 'Повторите новый пароль', updatePassword: 'Обновить пароль', mbankHint: 'Демо-оплата через MBank QR', optimaHint: 'Демо-оплата через Optima QR', walletHint: 'Оплата из кошелька', cardHint: 'Оплата сохраненной картой'
+        walletBalance: 'Баланс кошелька', refresh: 'Обновить', cancel: 'Отменить', saveProfile: 'Сохранить профиль', changePassword: 'Изменить пароль', currentPassword: 'Текущий пароль', newPassword: 'Новый пароль', confirmPassword: 'Повторите новый пароль', updatePassword: 'Обновить пароль', openStatus: 'Открыто', reservedStatus: 'Забронировано', mbankHint: 'Демо-оплата через MBank QR', optimaHint: 'Демо-оплата через Optima QR', walletHint: 'Оплата из кошелька', cardHint: 'Оплата сохраненной картой', searching: 'Ищем...', notFound: 'Место не найдено', searchError: 'Ошибка поиска'
     },
     en: {
         premiumParking: 'Premium parking', heroText: 'Reserve a safe place, save time, and drive into the city with confidence.',
@@ -79,7 +114,7 @@ const translations = {
         baseRate: 'Base rate', serviceFee: 'Service fee', tripTotal: 'Trip total', confirmPayment: 'Confirm payment',
         home: 'Home', auth: 'Auth', card: 'Card', map: 'Map', book: 'Book', profile: 'Profile', account: 'Account',
         history: 'Booking history', noBookings: 'No bookings yet', logout: 'Log out', loginToProfile: 'Sign in to open your profile',
-        walletBalance: 'Wallet balance', refresh: 'Refresh', cancel: 'Cancel', saveProfile: 'Save profile', changePassword: 'Change password', currentPassword: 'Current password', newPassword: 'New password', confirmPassword: 'Repeat new password', updatePassword: 'Update password', mbankHint: 'Demo payment via MBank QR', optimaHint: 'Demo payment via Optima QR', walletHint: 'Pay from wallet', cardHint: 'Pay with saved card'
+        walletBalance: 'Wallet balance', refresh: 'Refresh', cancel: 'Cancel', saveProfile: 'Save profile', changePassword: 'Change password', currentPassword: 'Current password', newPassword: 'New password', confirmPassword: 'Repeat new password', updatePassword: 'Update password', openStatus: 'Open', reservedStatus: 'Reserved', mbankHint: 'Demo payment via MBank QR', optimaHint: 'Demo payment via Optima QR', walletHint: 'Pay from wallet', cardHint: 'Pay with saved card', searching: 'Searching...', notFound: 'Location not found', searchError: 'Search error'
     }
 };
 
@@ -94,6 +129,8 @@ function applyLanguage(language) {
     if (search) search.placeholder = language === 'ky' ? 'Дарек издеңиз' : language === 'ru' ? 'Поиск места' : 'Search Location';
     if (mapModeButton) mapModeButton.textContent = satelliteMode ? dictionary.map : dictionary.satellite;
     if (paymentHint) paymentHint.textContent = dictionary[`${selectedPaymentMethod}Hint`] || dictionary.mbankHint;
+    if (bookingStatus && bookingStatus.dataset.status === 'reserved') bookingStatus.textContent = dictionary.reservedStatus;
+    if (searchMessage && !searchMessage.dataset.active) searchMessage.textContent = '';
     localStorage.setItem('smartpark-language', language);
 }
 
@@ -150,6 +187,17 @@ navButtons.forEach((button) => {
 });
 
 getStartedBtn?.addEventListener('click', () => showScreen('auth'));
+document.querySelectorAll('button').forEach((button) => {
+    button.addEventListener('click', () => playUiSound('click'));
+});
+
+soundToggle?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    soundEnabled = !soundEnabled;
+    localStorage.setItem('smartpark-sound', soundEnabled ? 'on' : 'off');
+    updateSoundButton();
+    if (soundEnabled) playUiSound('success');
+});
 profileLogin?.addEventListener('click', () => showScreen('auth'));
 
 logoutButtons.forEach((button) => {
@@ -328,6 +376,17 @@ async function refreshLocationStatus() {
             card.dataset.free = String(location.free_spots);
             const freeLabel = card.querySelector('.meta-row strong');
             if (freeLabel) freeLabel.textContent = location.free_spots;
+            const marker = locationMarkers.get(String(location.id));
+            if (marker) {
+                const popup = marker.getPopup();
+                if (popup) {
+                    const popupNode = document.createElement('div');
+                    popupNode.innerHTML = popup.getContent();
+                    const freeText = popupNode.querySelector('[data-popup-free]');
+                    if (freeText) freeText.textContent = `${location.free_spots} free spots`;
+                    marker.setPopupContent(popupNode.innerHTML);
+                }
+            }
             location.spots.forEach((spot) => {
                 const button = card.querySelector(`.spot-btn[data-spot-id="${spot.id}"]`);
                 if (!button || button.classList.contains('selected')) return;
@@ -382,10 +441,15 @@ addCardButtons.forEach((button) => {
 });
 
 continueBtn?.addEventListener('click', async () => {
+    if (bookingSubmitting) return;
     if (!selectedSpotId) {
         if (bookingMessage) bookingMessage.textContent = 'Для этой зоны пока нет свободных мест в базе.';
         return;
     }
+    bookingSubmitting = true;
+    continueBtn.disabled = true;
+    const originalLabel = continueBtn.textContent;
+    continueBtn.textContent = 'Обработка...';
     try {
         const result = await postJson('/api/bookings/', {
             spot_id: selectedSpotId,
@@ -393,6 +457,12 @@ continueBtn?.addEventListener('click', async () => {
             duration_hours: selectedDuration,
         });
         if (bookingMessage) bookingMessage.textContent = `Бронь #${result.booking_id} подтверждена.`;
+        playUiSound('success');
+        if (bookingStatus) {
+            bookingStatus.dataset.status = 'reserved';
+            const dictionary = translations[languageSelect?.value || 'ru'] || translations.ru;
+            bookingStatus.textContent = dictionary.reservedStatus;
+        }
            if (selectedLocationCard) {
                selectedLocationCard.dataset.free = String(result.free_spots);
                const freeLabel = selectedLocationCard.querySelector('.meta-row strong');
@@ -404,9 +474,13 @@ continueBtn?.addEventListener('click', async () => {
             bookedSpot.classList.remove('selected', 'released');
             bookedSpot.classList.add('occupied');
         }
-        continueBtn.disabled = true;
+        continueBtn.textContent = originalLabel;
     } catch (error) {
+        playUiSound('error');
         if (bookingMessage) bookingMessage.textContent = error.message;
+        bookingSubmitting = false;
+        continueBtn.disabled = false;
+        continueBtn.textContent = originalLabel;
     }
 });
 
@@ -437,9 +511,10 @@ function renderMapWithData(data) {
             <div class="map-popup">
                 <h4>${location.name}</h4>
                 <p>${location.address}</p>
-                <p><strong>${location.free_spots}</strong> free spots</p>
+                <p><strong data-popup-free>${location.free_spots} free spots</strong></p>
             </div>
         `);
+        locationMarkers.set(String(location.id), marker);
         marker.on('click', () => {
             const card = document.querySelector(`.location-card[data-location-id="${location.id}"]`);
             if (card) {
@@ -490,11 +565,19 @@ if (locationInput) {
         if (event.key !== 'Enter') return;
         const q = locationInput.value.trim();
         if (!q || !window.L || !map) return;
+        const dictionary = translations[languageSelect?.value || 'ru'] || translations.ru;
+        if (searchMessage) {
+            searchMessage.textContent = dictionary.searching;
+            searchMessage.dataset.active = 'true';
+        }
 
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}`);
             const results = await response.json();
-            if (!results || !results.length) return;
+            if (!results || !results.length) {
+                if (searchMessage) searchMessage.textContent = dictionary.notFound;
+                return;
+            }
 
             const place = results[0];
             const lat = Number(place.lat);
@@ -504,8 +587,10 @@ if (locationInput) {
             if (activeMarker) map.removeLayer(activeMarker);
             activeMarker = L.marker([lat, lon]).addTo(map);
             activeMarker.bindPopup(`<div class="map-popup"><h4>${place.display_name}</h4><p>Search result</p></div>`).openPopup();
+            if (searchMessage) searchMessage.textContent = place.display_name;
         } catch (error) {
             console.error('Geocoding error:', error);
+            if (searchMessage) searchMessage.textContent = dictionary.searchError;
         }
     });
 }

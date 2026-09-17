@@ -78,6 +78,13 @@ button, input {
 
 button { cursor: pointer; }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 3px solid rgba(0, 85, 255, 0.34);
+    outline-offset: 3px;
+}
+
 .app-shell {
     width: min(100%, 430px);
 }
@@ -156,6 +163,16 @@ button { cursor: pointer; }
     border: 1px solid var(--line);
     background: var(--surface);
     color: var(--ink);
+}
+
+.sound-toggle {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--accent);
+    font-size: 1.05rem;
 }
 
 .language-switcher {
@@ -979,6 +996,11 @@ html[data-theme="dark"] .credit-card {
     background: transparent;
     color: var(--muted);
     font-size: 0.95rem;
+}
+
+.search-message {
+    margin: 7px 4px 0;
+    min-height: 18px;
 }
 
 .quick-filters {

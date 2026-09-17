@@ -7,6 +7,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -21,6 +23,15 @@ def _json_body(request):
         return json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return None
+
+
+def _normalize_phone(phone):
+    digits = "".join(char for char in str(phone) if char.isdigit())
+    if digits.startswith("0") and len(digits) == 10:
+        digits = "996" + digits[1:]
+    if digits.startswith("996") and len(digits) == 12:
+        return f"+{digits}"
+    return str(phone).strip()
 
 
 def _issue_otp(user, purpose):
@@ -89,6 +100,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) return;
+        if (event.request.mode === 'navigate') {
+            event.respondWith(fetch(event.request).then((response) => {
+                if (response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put('/', copy));
+                }
+                return response;
+            }).catch(() => caches.match('/')));
+            return;
+        }
     if (url.pathname.startsWith('/static/')) {
         event.respondWith(caches.open(CACHE_NAME).then(async (cache) => {
             const cached = await cache.match(event.request);
@@ -126,21 +147,21 @@ def booking_history(request):
 def locations_status(request):
     locations = ParkingLocation.objects.prefetch_related("spots").all()
     now = timezone.now()
+    status_data = []
     for location in locations:
-        for spot in location.spots.all():
+        spots = list(location.spots.all())
+        for spot in spots:
             _clear_expired_spot_booking(spot, now)
+        status_data.append({
+            "id": location.id,
+            "free_spots": sum(not spot.is_occupied for spot in spots),
+            "spots": [
+                {"id": spot.id, "is_occupied": spot.is_occupied}
+                for spot in spots
+            ],
+        })
     return JsonResponse({
-        "locations": [
-            {
-                "id": location.id,
-                "free_spots": location.free_spots,
-                "spots": [
-                    {"id": spot.id, "is_occupied": spot.is_occupied}
-                    for spot in location.spots.all()
-                ],
-            }
-            for location in locations
-        ]
+        "locations": status_data
     })
 
 
@@ -152,11 +173,13 @@ def update_profile(request):
         return JsonResponse({"error": "Invalid JSON."}, status=400)
     full_name = str(data.get("full_name", "")).strip()
     email = str(data.get("email", "")).strip().lower()
-    phone = str(data.get("phone", "")).strip()
+    phone = _normalize_phone(data.get("phone", ""))
     if not full_name or not email or not phone:
         return JsonResponse({"error": "Заполните имя, email и телефон."}, status=400)
     if CustomUser.objects.filter(email=email).exclude(pk=request.user.pk).exists():
         return JsonResponse({"error": "Этот email уже используется."}, status=409)
+    if CustomUser.objects.filter(phone=phone).exclude(pk=request.user.pk).exists():
+        return JsonResponse({"error": "Этот телефон уже используется."}, status=409)
     first_name, _, last_name = full_name.partition(" ")
     request.user.first_name = first_name
     request.user.last_name = last_name
@@ -179,6 +202,10 @@ def change_password(request):
         return JsonResponse({"error": "Текущий пароль указан неверно."}, status=400)
     if len(new_password) < 8 or new_password != confirm_password:
         return JsonResponse({"error": "Новый пароль должен быть от 8 символов и совпадать в обоих полях."}, status=400)
+    try:
+        validate_password(new_password, request.user)
+    except ValidationError as error:
+        return JsonResponse({"error": ", ".join(error.messages)}, status=400)
     request.user.set_password(new_password)
     request.user.save(update_fields=["password"])
     auth_login(request, request.user)
@@ -213,13 +240,19 @@ def signup(request):
     if data is None:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
     email = str(data.get("email", "")).strip().lower()
-    phone = str(data.get("phone", "")).strip()
+    phone = _normalize_phone(data.get("phone", ""))
     full_name = str(data.get("full_name", "")).strip()
     password = str(data.get("password", ""))
     if not email or not phone or not full_name or len(password) < 8:
         return JsonResponse({"error": "Введите имя, email, телефон и пароль от 8 символов."}, status=400)
+    try:
+        validate_password(password)
+    except ValidationError as error:
+        return JsonResponse({"error": ", ".join(error.messages)}, status=400)
     if CustomUser.objects.filter(email=email).exists():
         return JsonResponse({"error": "Пользователь с таким email уже существует."}, status=409)
+    if CustomUser.objects.filter(phone=phone).exists():
+        return JsonResponse({"error": "Пользователь с таким телефоном уже существует."}, status=409)
     first_name, _, last_name = full_name.partition(" ")
     user = CustomUser.objects.create_user(
         username=email,
@@ -242,6 +275,8 @@ def login(request):
     if data is None:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
     identifier = str(data.get("email", data.get("phone", ""))).strip().lower()
+    if "@" not in identifier:
+        identifier = _normalize_phone(identifier)
     password = str(data.get("password", ""))
     user = CustomUser.objects.filter(email=identifier).first() or CustomUser.objects.filter(phone=identifier).first()
     if not user or not user.check_password(password):
@@ -262,6 +297,8 @@ def verify_otp(request):
     if data is None:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
     identifier = str(data.get("email", data.get("phone", ""))).strip()
+    if "@" not in identifier:
+        identifier = _normalize_phone(identifier)
     code = str(data.get("code", "")).strip()
     user = CustomUser.objects.filter(email=identifier.lower()).first() or CustomUser.objects.filter(phone=identifier).first()
     verification = user and VerificationCode.objects.filter(
@@ -327,7 +364,7 @@ def create_booking(request):
         spot = ParkingSpot.objects.select_for_update().select_related("location").get(pk=spot.pk)
         now = timezone.now()
         _clear_expired_spot_booking(spot, now)
-        if spot.bookings.filter(is_active=True, end_time__gt=now).exists():
+        if spot.is_occupied or spot.bookings.filter(is_active=True, end_time__gt=now).exists():
             return JsonResponse({"error": "Место уже занято."}, status=409)
         amount = spot.location.price * duration_hours
         if payment_method == "wallet" and request.user.wallet_balance < amount:
@@ -361,7 +398,8 @@ def create_booking(request):
 
 @login_required
 def spot_status(request, spot_id):
-    spot = ParkingSpot.objects.select_related("location").get(pk=spot_id)
+    spot = get_object_or_404(ParkingSpot.objects.select_related("location"), pk=spot_id)
+    _clear_expired_spot_booking(spot, timezone.now())
     active_booking = spot.bookings.filter(is_active=True, end_time__gt=timezone.now()).first()
     return JsonResponse({
         "spot_id": spot.id,
@@ -384,7 +422,7 @@ def toggle_booking(request, spot_id):
         active_booking = spot.bookings.filter(is_active=True, end_time__gt=now).first()
 
         if action == "reserve":
-            if active_booking:
+            if spot.is_occupied or active_booking:
                 return JsonResponse({"error": "This spot is already booked."}, status=409)
             Booking.objects.create(
                 user=request.user,

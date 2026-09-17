@@ -31,6 +31,9 @@
                 <button class="theme-toggle" type="button" aria-label="Toggle theme">
                     <span class="theme-icon">☀</span>
                 </button>
+                <button class="sound-toggle" id="sound-toggle" type="button" aria-label="Toggle sound" aria-pressed="true">
+                    <span class="sound-icon">♪</span>
+                </button>
                 <label class="language-switcher" aria-label="Language">
                     <span class="language-icon">文</span>
                     <select id="language-select">
@@ -161,6 +164,7 @@
                         <span class="search-icon">⌕</span>
                         <input id="location-search" type="search" placeholder="Search Location" aria-label="Search Location">
                     </label>
+                    <p class="form-message search-message" id="search-message" role="status"></p>
 
                     <div class="quick-filters">
                         <button class="filter-chip active" type="button" data-i18n="nearby">Nearby</button>
@@ -241,7 +245,7 @@
                                 <p class="label" data-i18n="parkingGarage">Parking Garage</p>
                                 <h4 id="selected-location-name">Asia Mall</h4>
                             </div>
-                            <span class="status-pill">Open</span>
+                            <span class="status-pill" id="booking-status" data-i18n="openStatus">Open</span>
                         </div>
 
                         <div class="booking-breakdown">

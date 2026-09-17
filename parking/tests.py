@@ -31,6 +31,7 @@ class BookingFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/javascript")
         self.assertContains(response, "smartpark-static-v2")
+        self.assertContains(response, "event.request.mode === 'navigate'")
 
     def test_user_can_reserve_and_release_spot(self):
         self.client.force_login(self.user)
@@ -62,6 +63,17 @@ class BookingFlowTests(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
+    def test_occupied_flag_alone_blocks_new_booking(self):
+        self.spot.is_occupied = True
+        self.spot.save(update_fields=["is_occupied"])
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("parking:create-booking"),
+            data={"spot_id": self.spot.id, "payment_method": "mbank"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 409)
+
     @override_settings(DEBUG=True)
     def test_signup_and_phone_otp_login(self):
         signup = self.client.post(
@@ -89,6 +101,52 @@ class BookingFlowTests(TestCase):
         )
         self.assertEqual(verify.status_code, 200)
         self.assertTrue(self.client.session.get("_auth_user_id"))
+
+    @override_settings(DEBUG=True)
+    def test_signup_rejects_common_password(self):
+        response = self.client.post(
+            reverse("parking:signup"),
+            data={
+                "email": "weak@example.com",
+                "phone": "+996700000009",
+                "full_name": "Weak User",
+                "password": "password",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(CustomUser.objects.filter(email="weak@example.com").exists())
+
+    @override_settings(DEBUG=True)
+    def test_signup_rejects_duplicate_phone(self):
+        self.user.phone = "+996700000000"
+        self.user.save(update_fields=["phone"])
+        response = self.client.post(
+            reverse("parking:signup"),
+            data={
+                "email": "duplicate@example.com",
+                "phone": self.user.phone,
+                "full_name": "Duplicate User",
+                "password": "safe-pass-123",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 409)
+
+    @override_settings(DEBUG=True)
+    def test_phone_formats_are_normalized(self):
+        response = self.client.post(
+            reverse("parking:signup"),
+            data={
+                "email": "format@example.com",
+                "phone": "0700 000 003",
+                "full_name": "Format User",
+                "password": "safe-pass-123",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CustomUser.objects.get(email="format@example.com").phone, "+996700000003")
 
     def test_authenticated_user_can_read_booking_history(self):
         self.client.force_login(self.user)
@@ -119,6 +177,26 @@ class BookingFlowTests(TestCase):
         self.client.get(reverse("parking:locations-status"))
         self.assertFalse(ParkingSpot.objects.get(pk=self.spot.pk).is_occupied)
         self.assertFalse(Booking.objects.get(spot=self.spot).is_active)
+
+    def test_missing_spot_status_returns_not_found(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("parking:spot-status", args=[999999]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_spot_status_clears_expired_booking(self):
+        Booking.objects.create(
+            user=self.user,
+            spot=self.spot,
+            start_time=timezone.now() - timedelta(hours=2),
+            end_time=timezone.now() - timedelta(hours=1),
+            is_active=True,
+        )
+        self.spot.is_occupied = True
+        self.spot.save(update_fields=["is_occupied"])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("parking:spot-status", args=[self.spot.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["is_occupied"])
 
     def test_user_can_update_profile(self):
         self.client.force_login(self.user)
