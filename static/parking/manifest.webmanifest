@@ -1,0 +1,18 @@
+{
+  "name": "SmartPark Bishkek",
+  "short_name": "SmartPark",
+  "description": "Parking search and booking service for Bishkek",
+  "lang": "ru",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fc",
+  "theme_color": "#0055ff",
+  "icons": [
+    {
+      "src": "/static/parking/img/smartpark-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -25,6 +25,12 @@ class BookingFlowTests(TestCase):
         response = self.client.get(reverse("parking:index"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Test Parking")
+
+    def test_service_worker_endpoint_returns_javascript(self):
+        response = self.client.get(reverse("parking:service-worker"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/javascript")
+        self.assertContains(response, "smartpark-static-v2")
 
     def test_user_can_reserve_and_release_spot(self):
         self.client.force_login(self.user)
@@ -55,3 +61,180 @@ class BookingFlowTests(TestCase):
             reverse("parking:toggle-booking", args=[self.spot.id]), {"action": "reserve"}
         )
         self.assertEqual(response.status_code, 409)
+
+    @override_settings(DEBUG=True)
+    def test_signup_and_phone_otp_login(self):
+        signup = self.client.post(
+            reverse("parking:signup"),
+            data={
+                "email": "new@example.com",
+                "phone": "+996700000001",
+                "full_name": "New Driver",
+                "password": "safe-pass-123",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(signup.status_code, 201)
+        user = CustomUser.objects.get(email="new@example.com")
+        code = user.verification_codes.first()
+        self.assertIsNotNone(code)
+
+        from parking.models import VerificationCode
+        self.assertIsInstance(code, VerificationCode)
+
+        verify = self.client.post(
+            reverse("parking:verify-otp"),
+            data={"phone": "+996700000001", "code": signup.json()["dev_code"]},
+            content_type="application/json",
+        )
+        self.assertEqual(verify.status_code, 200)
+        self.assertTrue(self.client.session.get("_auth_user_id"))
+
+    def test_authenticated_user_can_read_booking_history(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("parking:booking-history"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["bookings"], [])
+
+    def test_locations_status_is_public_and_returns_spots(self):
+        response = self.client.get(reverse("parking:locations-status"))
+        self.assertEqual(response.status_code, 200)
+        spot_ids = {
+            spot["id"]
+            for location in response.json()["locations"]
+            for spot in location["spots"]
+        }
+        self.assertIn(self.spot.id, spot_ids)
+
+    def test_locations_status_clears_expired_booking(self):
+        Booking.objects.create(
+            user=self.user,
+            spot=self.spot,
+            start_time=timezone.now() - timedelta(hours=2),
+            end_time=timezone.now() - timedelta(hours=1),
+            is_active=True,
+        )
+        self.spot.is_occupied = True
+        self.spot.save(update_fields=["is_occupied"])
+        self.client.get(reverse("parking:locations-status"))
+        self.assertFalse(ParkingSpot.objects.get(pk=self.spot.pk).is_occupied)
+        self.assertFalse(Booking.objects.get(spot=self.spot).is_active)
+
+    def test_user_can_update_profile(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("parking:update-profile"),
+            data={"full_name": "Updated Driver", "email": "updated@example.com", "phone": "+996700000002"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "Updated")
+        self.assertEqual(self.user.phone, "+996700000002")
+
+    def test_user_can_change_password(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("parking:change-password"),
+            data={"current_password": "pass12345", "new_password": "new-safe-123", "confirm_password": "new-safe-123"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("new-safe-123"))
+
+    def test_create_booking_marks_spot_occupied(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("parking:create-booking"),
+            data={"spot_id": self.spot.id, "payment_method": "mbank"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(ParkingSpot.objects.get(pk=self.spot.pk).is_occupied)
+        self.assertEqual(response.json()["amount"], 100.0)
+
+    def test_create_booking_calculates_multi_hour_price(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("parking:create-booking"),
+            data={"spot_id": self.spot.id, "payment_method": "mbank", "duration_hours": 3},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        booking = Booking.objects.get(spot=self.spot, is_active=True)
+        self.assertEqual(booking.amount, 300)
+        self.assertEqual(booking.end_time - booking.start_time, timedelta(hours=3))
+
+    def test_user_can_cancel_own_active_booking(self):
+        booking = Booking.objects.create(
+            user=self.user,
+            spot=self.spot,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=1),
+            amount=100,
+        )
+        self.spot.is_occupied = True
+        self.spot.save(update_fields=["is_occupied"])
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("parking:cancel-booking", args=[booking.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Booking.objects.get(pk=booking.pk).is_active)
+        self.assertFalse(ParkingSpot.objects.get(pk=self.spot.pk).is_occupied)
+
+    def test_other_user_cannot_cancel_booking(self):
+        booking = Booking.objects.create(
+            user=self.user,
+            spot=self.spot,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=1),
+            amount=100,
+        )
+        self.spot.is_occupied = True
+        self.spot.save(update_fields=["is_occupied"])
+        self.client.force_login(self.other_user)
+        response = self.client.post(reverse("parking:cancel-booking", args=[booking.id]))
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Booking.objects.get(pk=booking.pk).is_active)
+
+    def test_wallet_payment_is_refunded_on_cancellation(self):
+        self.user.wallet_balance = 100
+        self.user.save(update_fields=["wallet_balance"])
+        booking = Booking.objects.create(
+            user=self.user,
+            spot=self.spot,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=1),
+            payment_method="wallet",
+            payment_status="paid",
+            amount=100,
+        )
+        self.spot.is_occupied = True
+        self.spot.save(update_fields=["is_occupied"])
+        self.user.wallet_balance = 0
+        self.user.save(update_fields=["wallet_balance"])
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("parking:cancel-booking", args=[booking.id]))
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.wallet_balance, 100)
+
+    def test_expired_booking_releases_spot_before_new_booking(self):
+        Booking.objects.create(
+            user=self.user,
+            spot=self.spot,
+            start_time=timezone.now() - timedelta(hours=2),
+            end_time=timezone.now() - timedelta(hours=1),
+            is_active=True,
+            amount=100,
+        )
+        self.spot.is_occupied = True
+        self.spot.save(update_fields=["is_occupied"])
+        self.client.force_login(self.other_user)
+        response = self.client.post(
+            reverse("parking:create-booking"),
+            data={"spot_id": self.spot.id, "payment_method": "mbank"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Booking.objects.filter(spot=self.spot, is_active=True).count(), 1)

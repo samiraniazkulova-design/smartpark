@@ -5,6 +5,7 @@ const navButtons = document.querySelectorAll('.nav-item');
 const authTabs = document.querySelectorAll('.tab');
 const filterChips = document.querySelectorAll('.filter-chip');
 const locationCards = document.querySelectorAll('.location-card');
+const spotButtons = document.querySelectorAll('.spot-btn:not([disabled])');
 const getStartedBtn = document.querySelector('.get-started');
 const saveCardBtn = document.querySelector('.save-card-btn');
 const cardMessage = document.getElementById('card-message');
@@ -18,15 +19,90 @@ const bookingMessage = document.getElementById('booking-message');
 const signupFields = document.querySelectorAll('.signup-only');
 const otpBoxes = document.getElementById('otp-boxes');
 const paymentMethods = document.querySelectorAll('.payment-method');
+const paymentHint = document.getElementById('payment-hint');
 const addCardButtons = document.querySelectorAll('.mini-btn');
+const languageSelect = document.getElementById('language-select');
+const logoutButtons = document.querySelectorAll('.logout-btn');
+const profileLogin = document.querySelector('.profile-login');
+const historyRefresh = document.querySelector('.history-refresh');
+const cancelBookingButtons = document.querySelectorAll('.cancel-booking');
+const saveProfileButton = document.querySelector('.save-profile');
+const profileMessage = document.getElementById('profile-message');
+const changePasswordButton = document.querySelector('.change-password');
+const passwordMessage = document.getElementById('password-message');
+const durationSelect = document.getElementById('duration-select');
 let authMode = 'signin';
 let pendingAuthEmail = '';
 let selectedSpotId = null;
 let selectedPaymentMethod = 'mbank';
 let selectedLocationCard = null;
+let selectedDuration = 1;
 let streetLayer;
 let satelliteLayer;
 let satelliteMode = false;
+
+const translations = {
+    ky: {
+        premiumParking: 'Премиум парковка', heroText: 'Коопсуз орунду алдын ала брондоп, убактыңызды үнөмдөңүз.',
+        getStarted: 'Баштоо', secureAccess: 'Коопсуз кирүү', welcomeBack: 'Кайра кош келиңиз', signIn: 'Кирүү', signUp: 'Катталуу',
+        fullName: 'Толук аты-жөнү', emailOrPhone: 'Email же телефон', phoneNumber: 'Телефон номери', password: 'Сырсөз',
+        continue: 'Улантуу', verifyOtp: 'OTP текшерүү', wallet: 'Капчык', addCard: 'Карта кошуу', cardholderName: 'Карта ээси',
+        cardNumber: 'Карта номери', expiry: 'Мөөнөтү', saveCard: 'Картаны сактоо', explore: 'Издөө', parkingSpots: 'Парковка орундар',
+        satellite: 'Спутник', nearby: 'Жакын', open: 'Ачык', covered: 'Жабык', reservation: 'Бронь', booking: 'Брондоо',
+        parkingGarage: 'Парковка', parkingSlot: 'Орун', duration: 'Убакыт', address: 'Дарек', payment: 'Төлөм',
+        baseRate: 'Негизги тариф', serviceFee: 'Кызмат акысы', tripTotal: 'Жалпы сумма', confirmPayment: 'Төлөмдү ырастоо',
+        home: 'Башкы бет', auth: 'Кирүү', card: 'Карта', map: 'Карта', book: 'Бронь', profile: 'Профиль', account: 'Аккаунт',
+        history: 'Брондор тарыхы', noBookings: 'Азырынча брондор жок', logout: 'Чыгуу', loginToProfile: 'Профилди көрүү үчүн кириңиз',
+        walletBalance: 'Капчыктагы баланс', refresh: 'Жаңыртуу', cancel: 'Жокко чыгаруу', saveProfile: 'Профилди сактоо', changePassword: 'Сырсөздү өзгөртүү', currentPassword: 'Учурдагы сырсөз', newPassword: 'Жаңы сырсөз', confirmPassword: 'Жаңы сырсөздү кайталаңыз', updatePassword: 'Сырсөздү жаңыртуу', mbankHint: 'MBank QR аркылуу демо-төлөм', optimaHint: 'Optima QR аркылуу демо-төлөм', walletHint: 'Капчыктан төлөө', cardHint: 'Сакталган карта менен төлөө'
+    },
+    ru: {
+        premiumParking: 'Премиум парковка', heroText: 'Забронируйте безопасное место и экономьте время в городе.',
+        getStarted: 'Начать', secureAccess: 'Безопасный вход', welcomeBack: 'С возвращением', signIn: 'Войти', signUp: 'Регистрация',
+        fullName: 'Полное имя', emailOrPhone: 'Email или телефон', phoneNumber: 'Номер телефона', password: 'Пароль',
+        continue: 'Продолжить', verifyOtp: 'Проверить OTP', wallet: 'Кошелек', addCard: 'Добавить карту', cardholderName: 'Имя владельца',
+        cardNumber: 'Номер карты', expiry: 'Срок действия', saveCard: 'Сохранить карту', explore: 'Поиск', parkingSpots: 'Парковочные места',
+        satellite: 'Спутник', nearby: 'Рядом', open: 'Открытые', covered: 'Крытые', reservation: 'Резервация', booking: 'Бронирование',
+        parkingGarage: 'Парковка', parkingSlot: 'Место', duration: 'Время', address: 'Адрес', payment: 'Оплата',
+        baseRate: 'Базовый тариф', serviceFee: 'Сервисный сбор', tripTotal: 'Итого', confirmPayment: 'Подтвердить оплату',
+        home: 'Главная', auth: 'Вход', card: 'Карта', map: 'Карта', book: 'Бронь', profile: 'Профиль', account: 'Аккаунт',
+        history: 'История бронирований', noBookings: 'Бронирований пока нет', logout: 'Выйти', loginToProfile: 'Войдите, чтобы открыть профиль',
+        walletBalance: 'Баланс кошелька', refresh: 'Обновить', cancel: 'Отменить', saveProfile: 'Сохранить профиль', changePassword: 'Изменить пароль', currentPassword: 'Текущий пароль', newPassword: 'Новый пароль', confirmPassword: 'Повторите новый пароль', updatePassword: 'Обновить пароль', mbankHint: 'Демо-оплата через MBank QR', optimaHint: 'Демо-оплата через Optima QR', walletHint: 'Оплата из кошелька', cardHint: 'Оплата сохраненной картой'
+    },
+    en: {
+        premiumParking: 'Premium parking', heroText: 'Reserve a safe place, save time, and drive into the city with confidence.',
+        getStarted: 'Get Started', secureAccess: 'Secure access', welcomeBack: 'Welcome back', signIn: 'Sign In', signUp: 'Sign Up',
+        fullName: 'Full name', emailOrPhone: 'Email or phone', phoneNumber: 'Phone Number', password: 'Password',
+        continue: 'Continue', verifyOtp: 'Verify OTP', wallet: 'Wallet', addCard: 'Add Card', cardholderName: 'Cardholder name',
+        cardNumber: 'Card number', expiry: 'Expiry', saveCard: 'Save Card', explore: 'Explore', parkingSpots: 'Parking spots',
+        satellite: 'Satellite', nearby: 'Nearby', open: 'Open', covered: 'Covered', reservation: 'Reservation', booking: 'Booking',
+        parkingGarage: 'Parking Garage', parkingSlot: 'Parking slot', duration: 'Duration', address: 'Address', payment: 'Payment',
+        baseRate: 'Base rate', serviceFee: 'Service fee', tripTotal: 'Trip total', confirmPayment: 'Confirm payment',
+        home: 'Home', auth: 'Auth', card: 'Card', map: 'Map', book: 'Book', profile: 'Profile', account: 'Account',
+        history: 'Booking history', noBookings: 'No bookings yet', logout: 'Log out', loginToProfile: 'Sign in to open your profile',
+        walletBalance: 'Wallet balance', refresh: 'Refresh', cancel: 'Cancel', saveProfile: 'Save profile', changePassword: 'Change password', currentPassword: 'Current password', newPassword: 'New password', confirmPassword: 'Repeat new password', updatePassword: 'Update password', mbankHint: 'Demo payment via MBank QR', optimaHint: 'Demo payment via Optima QR', walletHint: 'Pay from wallet', cardHint: 'Pay with saved card'
+    }
+};
+
+function applyLanguage(language) {
+    const dictionary = translations[language] || translations.en;
+    document.documentElement.lang = language;
+    document.querySelectorAll('[data-i18n]').forEach((element) => {
+        const value = dictionary[element.dataset.i18n];
+        if (value) element.textContent = value;
+    });
+    const search = document.getElementById('location-search');
+    if (search) search.placeholder = language === 'ky' ? 'Дарек издеңиз' : language === 'ru' ? 'Поиск места' : 'Search Location';
+    if (mapModeButton) mapModeButton.textContent = satelliteMode ? dictionary.map : dictionary.satellite;
+    if (paymentHint) paymentHint.textContent = dictionary[`${selectedPaymentMethod}Hint`] || dictionary.mbankHint;
+    localStorage.setItem('smartpark-language', language);
+}
+
+const savedLanguage = localStorage.getItem('smartpark-language') || 'ru';
+if (languageSelect) {
+    languageSelect.value = savedLanguage;
+    languageSelect.addEventListener('change', () => applyLanguage(languageSelect.value));
+}
+applyLanguage(savedLanguage);
 
 function csrfToken() {
     return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
@@ -74,6 +150,81 @@ navButtons.forEach((button) => {
 });
 
 getStartedBtn?.addEventListener('click', () => showScreen('auth'));
+profileLogin?.addEventListener('click', () => showScreen('auth'));
+
+logoutButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+        await postJson('/api/auth/logout/', {});
+        window.location.reload();
+    });
+});
+
+historyRefresh?.addEventListener('click', async () => {
+    try {
+        const response = await fetch('/api/bookings/history/', { credentials: 'same-origin' });
+        if (response.ok) window.location.reload();
+    } catch (error) {
+        console.error('History refresh error:', error);
+    }
+});
+
+cancelBookingButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+            await postJson(`/api/bookings/${button.dataset.bookingId}/cancel/`, {});
+            const historyItem = button.closest('.history-item');
+            const spotId = historyItem?.dataset.spotId;
+            const releasedSpot = document.querySelector(`.spot-btn[data-spot-id="${spotId}"]`);
+            if (releasedSpot) {
+                releasedSpot.disabled = false;
+                releasedSpot.classList.remove('occupied', 'selected');
+                releasedSpot.classList.add('released');
+            }
+            historyItem?.remove();
+        } catch (error) {
+            button.disabled = false;
+            console.error('Cancel booking error:', error);
+        }
+    });
+});
+
+saveProfileButton?.addEventListener('click', async () => {
+    try {
+        const result = await postJson('/api/profile/', {
+            full_name: document.getElementById('profile-name')?.value.trim(),
+            email: document.getElementById('profile-email')?.value.trim(),
+            phone: document.getElementById('profile-phone')?.value.trim(),
+        });
+        document.querySelector('.profile-card h4').textContent = result.full_name;
+        document.querySelector('.profile-email').textContent = result.email;
+        document.querySelector('.profile-phone').textContent = result.phone;
+        if (profileMessage) profileMessage.textContent = 'Профиль сохранен.';
+    } catch (error) {
+        if (profileMessage) profileMessage.textContent = error.message;
+    }
+});
+
+changePasswordButton?.addEventListener('click', async () => {
+    try {
+        await postJson('/api/profile/password/', {
+            current_password: document.getElementById('current-password')?.value || '',
+            new_password: document.getElementById('new-password')?.value || '',
+            confirm_password: document.getElementById('confirm-password')?.value || '',
+        });
+        if (passwordMessage) passwordMessage.textContent = 'Пароль обновлен.';
+        document.querySelectorAll('#current-password, #new-password, #confirm-password').forEach((input) => { input.value = ''; });
+    } catch (error) {
+        if (passwordMessage) passwordMessage.textContent = error.message;
+    }
+});
+
+window.setTimeout(() => {
+    const splashScreen = document.querySelector('[data-screen="splash"]');
+    if (splashScreen?.classList.contains('active')) {
+        splashScreen.classList.add('ready');
+    }
+}, 1900);
 saveCardBtn?.addEventListener('click', async () => {
     const cardNumber = document.getElementById('card-number')?.value || '';
     const holderName = document.getElementById('card-holder')?.value.trim() || '';
@@ -124,7 +275,8 @@ authSubmit?.addEventListener('click', async () => {
 otpSubmit?.addEventListener('click', async () => {
     const code = [...otpBoxes.querySelectorAll('input')].map((input) => input.value).join('');
     try {
-        await postJson('/api/auth/verify/', { email: pendingAuthEmail, code });
+        const identifierKey = pendingAuthEmail.includes('@') ? 'email' : 'phone';
+        await postJson('/api/auth/verify/', { [identifierKey]: pendingAuthEmail, code });
         showScreen('card');
     } catch (error) {
         if (authMessage) authMessage.textContent = error.message;
@@ -153,11 +305,43 @@ function updateBookingSummary(card) {
 
     const price = Number(card.dataset.price || 0);
     const basePrice = price === 0 ? '0 som' : `${price} som`;
-    const total = price === 0 ? '0 som' : `${price} som`;
+    const totalPrice = price * selectedDuration;
+    const total = totalPrice === 0 ? '0 som' : `${totalPrice} som`;
 
     if (baseRateLabel) baseRateLabel.textContent = basePrice;
     if (tripTotalLabel) tripTotalLabel.textContent = total;
 }
+
+durationSelect?.addEventListener('change', () => {
+    selectedDuration = Number(durationSelect.value);
+    if (selectedLocationCard) updateBookingSummary(selectedLocationCard);
+});
+
+async function refreshLocationStatus() {
+    try {
+        const response = await fetch('/api/locations/status/', { credentials: 'same-origin' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        payload.locations.forEach((location) => {
+            const card = document.querySelector(`.location-card[data-location-id="${location.id}"]`);
+            if (!card) return;
+            card.dataset.free = String(location.free_spots);
+            const freeLabel = card.querySelector('.meta-row strong');
+            if (freeLabel) freeLabel.textContent = location.free_spots;
+            location.spots.forEach((spot) => {
+                const button = card.querySelector(`.spot-btn[data-spot-id="${spot.id}"]`);
+                if (!button || button.classList.contains('selected')) return;
+                button.disabled = spot.is_occupied;
+                button.classList.toggle('occupied', spot.is_occupied);
+                if (!spot.is_occupied) button.classList.remove('released');
+            });
+        });
+    } catch (error) {
+        console.error('Location status refresh error:', error);
+    }
+}
+
+window.setInterval(refreshLocationStatus, 15000);
 
 locationCards.forEach((card) => {
     card.addEventListener('click', () => {
@@ -169,10 +353,27 @@ locationCards.forEach((card) => {
     });
 });
 
+spotButtons.forEach((spotButton) => {
+    spotButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const card = spotButton.closest('.location-card');
+        locationCards.forEach((item) => item.classList.toggle('active', item === card));
+        selectedLocationCard = card;
+        selectedSpotId = spotButton.dataset.spotId;
+        card.querySelectorAll('.spot-btn').forEach((item) => item.classList.toggle('selected', item === spotButton));
+        updateBookingSummary(card);
+        const selectedSlot = document.querySelector('.breakdown-item strong');
+        if (selectedSlot) selectedSlot.textContent = `A-${spotButton.textContent.padStart(2, '0')}`;
+        showScreen('booking');
+    });
+});
+
 paymentMethods.forEach((method) => {
     method.addEventListener('click', () => {
         paymentMethods.forEach((item) => item.classList.toggle('active', item === method));
         selectedPaymentMethod = method.dataset.payment;
+        const dictionary = translations[languageSelect?.value || 'ru'] || translations.ru;
+        if (paymentHint) paymentHint.textContent = dictionary[`${selectedPaymentMethod}Hint`] || dictionary.mbankHint;
     });
 });
 
@@ -189,6 +390,7 @@ continueBtn?.addEventListener('click', async () => {
         const result = await postJson('/api/bookings/', {
             spot_id: selectedSpotId,
             payment_method: selectedPaymentMethod,
+            duration_hours: selectedDuration,
         });
         if (bookingMessage) bookingMessage.textContent = `Бронь #${result.booking_id} подтверждена.`;
            if (selectedLocationCard) {
@@ -196,6 +398,12 @@ continueBtn?.addEventListener('click', async () => {
                const freeLabel = selectedLocationCard.querySelector('.meta-row strong');
                if (freeLabel) freeLabel.textContent = result.free_spots;
            }
+        const bookedSpot = document.querySelector(`.spot-btn[data-spot-id="${selectedSpotId}"]`);
+        if (bookedSpot) {
+            bookedSpot.disabled = true;
+            bookedSpot.classList.remove('selected', 'released');
+            bookedSpot.classList.add('occupied');
+        }
         continueBtn.disabled = true;
     } catch (error) {
         if (bookingMessage) bookingMessage.textContent = error.message;
@@ -250,7 +458,8 @@ mapModeButton?.addEventListener('click', () => {
     satelliteMode = !satelliteMode;
     map.removeLayer(satelliteMode ? streetLayer : satelliteLayer);
     map.addLayer(satelliteMode ? satelliteLayer : streetLayer);
-    mapModeButton.textContent = satelliteMode ? 'Map' : 'Satellite';
+    const dictionary = translations[languageSelect?.value || 'en'] || translations.en;
+    mapModeButton.textContent = satelliteMode ? dictionary.map : dictionary.satellite;
 });
 
 if (document.getElementById('map')) {

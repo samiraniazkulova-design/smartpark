@@ -1,11 +1,15 @@
 ﻿{% load static %}
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="ru" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#0055ff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="{% static 'parking/manifest.webmanifest' %}">
     <title>SmartPark Bishkek</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'parking/img/smartpark-logo.svg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -27,10 +31,18 @@
                 <button class="theme-toggle" type="button" aria-label="Toggle theme">
                     <span class="theme-icon">☀</span>
                 </button>
+                <label class="language-switcher" aria-label="Language">
+                    <span class="language-icon">文</span>
+                    <select id="language-select">
+                        <option value="ru">RU</option>
+                        <option value="ky">KY</option>
+                        <option value="en">EN</option>
+                    </select>
+                </label>
             </header>
 
             <main class="screen-stack">
-                <section class="screen active" data-screen="splash">
+                <section class="screen active splash-screen" data-screen="splash">
                     <div class="splash-wrap">
                         <img class="splash-logo" src="{% static 'parking/img/smartpark-logo.svg' %}" alt="SmartPark Bishkek">
 
@@ -46,43 +58,43 @@
                         </div>
 
                         <div class="splash-copy">
-                            <span class="eyebrow accent">Premium parking</span>
+                            <span class="eyebrow accent" data-i18n="premiumParking">Premium parking</span>
                             <h1>SmartPark Bishkek</h1>
-                            <p>Reserve a safe place, save time, and drive into the city with confidence.</p>
+                            <p data-i18n="heroText">Reserve a safe place, save time, and drive into the city with confidence.</p>
                         </div>
 
-                        <button class="primary-btn get-started" type="button">Get Started</button>
+                        <button class="primary-btn get-started" type="button" data-i18n="getStarted">Get Started</button>
                     </div>
                 </section>
 
                 <section class="screen" data-screen="auth">
                     <div class="panel-header">
                         <div>
-                            <span class="eyebrow accent">Secure access</span>
-                            <h3>Welcome back</h3>
+                            <span class="eyebrow accent" data-i18n="secureAccess">Secure access</span>
+                            <h3 data-i18n="welcomeBack">Welcome back</h3>
                         </div>
                     </div>
 
                     <div class="auth-tabs">
-                        <button class="tab active" type="button" data-auth="signin">Sign In</button>
-                        <button class="tab" type="button" data-auth="signup">Sign Up</button>
+                        <button class="tab active" type="button" data-auth="signin" data-i18n="signIn">Sign In</button>
+                        <button class="tab" type="button" data-auth="signup" data-i18n="signUp">Sign Up</button>
                     </div>
 
                     <div class="auth-form" id="auth-form">
                         <label class="input-group signup-only" hidden>
-                            <span>Full name</span>
+                            <span data-i18n="fullName">Full name</span>
                             <input id="auth-name" type="text" placeholder="Ivan Ivanov" autocomplete="name">
                         </label>
                         <label class="input-group">
-                            <span>Email or phone</span>
+                            <span data-i18n="emailOrPhone">Email or phone</span>
                             <input id="auth-email" type="text" placeholder="you@example.com or +996..." autocomplete="username">
                         </label>
                         <label class="input-group signup-only" hidden>
-                            <span>Phone Number</span>
+                            <span data-i18n="phoneNumber">Phone Number</span>
                             <input id="auth-phone" type="tel" placeholder="+996 555 123 456" autocomplete="tel">
                         </label>
                         <label class="input-group">
-                            <span>Password</span>
+                            <span data-i18n="password">Password</span>
                             <input id="auth-password" type="password" placeholder="Minimum 8 characters" autocomplete="current-password">
                         </label>
 
@@ -96,33 +108,33 @@
                         </div>
 
                         <p class="form-message" id="auth-message" role="status"></p>
-                        <button class="primary-btn auth-submit" type="button">Continue</button>
-                        <button class="secondary-btn otp-submit" type="button" hidden>Verify OTP</button>
+                        <button class="primary-btn auth-submit" type="button" data-i18n="continue">Continue</button>
+                        <button class="secondary-btn otp-submit" type="button" hidden data-i18n="verifyOtp">Verify OTP</button>
                     </div>
                 </section>
 
                 <section class="screen" data-screen="card">
                     <div class="panel-header">
                         <div>
-                            <span class="eyebrow accent">Wallet</span>
-                            <h3>Add Card</h3>
+                            <span class="eyebrow accent" data-i18n="wallet">Wallet</span>
+                            <h3 data-i18n="addCard">Add Card</h3>
                         </div>
                     </div>
 
                     <div class="card-form dark-card">
                         <label class="input-group">
-                            <span>Cardholder name</span>
+                            <span data-i18n="cardholderName">Cardholder name</span>
                                <input id="card-holder" type="text" value="Bektur Kadyrov" aria-label="Cardholder name">
                         </label>
 
                         <label class="input-group">
-                            <span>Card number</span>
+                            <span data-i18n="cardNumber">Card number</span>
                                <input id="card-number" type="text" value="" placeholder="4242 4242 4242 4421" aria-label="Card number" inputmode="numeric">
                         </label>
 
                         <div class="card-row">
                             <label class="input-group small">
-                                <span>Expiry</span>
+                                <span data-i18n="expiry">Expiry</span>
                                    <input id="card-expiry" type="text" value="12/28" aria-label="Expiry date">
                             </label>
                             <label class="input-group small">
@@ -131,7 +143,7 @@
                             </label>
                         </div>
 
-                        <button class="primary-btn save-card-btn" type="button">Save Card</button>
+                        <button class="primary-btn save-card-btn" type="button" data-i18n="saveCard">Save Card</button>
                            <p class="form-message" id="card-message" role="status"></p>
                     </div>
                 </section>
@@ -139,10 +151,10 @@
                 <section class="screen" data-screen="map">
                     <div class="panel-header">
                         <div>
-                            <span class="eyebrow accent">Explore</span>
-                            <h3>Parking spots</h3>
+                            <span class="eyebrow accent" data-i18n="explore">Explore</span>
+                            <h3 data-i18n="parkingSpots">Parking spots</h3>
                         </div>
-                        <button class="secondary-btn" id="map-mode" type="button">Satellite</button>
+                        <button class="secondary-btn" id="map-mode" type="button" data-i18n="satellite">Satellite</button>
                     </div>
 
                     <label class="search-box" aria-label="Search location">
@@ -151,9 +163,9 @@
                     </label>
 
                     <div class="quick-filters">
-                        <button class="filter-chip active" type="button">Nearby</button>
-                        <button class="filter-chip" type="button">Open</button>
-                        <button class="filter-chip" type="button">Covered</button>
+                        <button class="filter-chip active" type="button" data-i18n="nearby">Nearby</button>
+                        <button class="filter-chip" type="button" data-i18n="open">Open</button>
+                        <button class="filter-chip" type="button" data-i18n="covered">Covered</button>
                     </div>
 
                     <div class="map-shell">
@@ -174,6 +186,11 @@
                                     <div class="meta-row">
                                         <span><strong>{{ location.free_spots }}</strong> free</span>
                                         <span>{% if location.price == 0 %}Free{% else %}{{ location.price }} som/hr{% endif %}</span>
+                                    </div>
+                                    <div class="spot-grid" aria-label="Parking spots">
+                                        {% for spot in location.spots.all %}
+                                            <button class="spot-btn{% if spot.is_occupied %} occupied{% endif %}" type="button" data-spot-id="{{ spot.id }}" {% if spot.is_occupied %}disabled{% endif %}>{{ spot.number }}</button>
+                                        {% endfor %}
                                     </div>
                                 </article>
                             {% endfor %}
@@ -212,8 +229,8 @@
                 <section class="screen" data-screen="booking">
                     <div class="panel-header">
                         <div>
-                            <span class="eyebrow accent">Reservation</span>
-                            <h3>Booking</h3>
+                            <span class="eyebrow accent" data-i18n="reservation">Reservation</span>
+                            <h3 data-i18n="booking">Booking</h3>
                         </div>
                         <span class="booking-snippet">#245118</span>
                     </div>
@@ -221,7 +238,7 @@
                     <div class="booking-card dark-card">
                         <div class="booking-hero">
                             <div>
-                                <p class="label">Parking Garage</p>
+                                <p class="label" data-i18n="parkingGarage">Parking Garage</p>
                                 <h4 id="selected-location-name">Asia Mall</h4>
                             </div>
                             <span class="status-pill">Open</span>
@@ -229,15 +246,22 @@
 
                         <div class="booking-breakdown">
                             <div class="breakdown-item">
-                                <span>Parking slot</span>
+                                <span data-i18n="parkingSlot">Parking slot</span>
                                 <strong>A-04</strong>
                             </div>
                             <div class="breakdown-item">
-                                <span>Duration</span>
-                                <strong>09:00 - 12:00</strong>
+                                <span data-i18n="duration">Duration</span>
+                                <label class="duration-control">
+                                    <select id="duration-select" aria-label="Duration">
+                                        <option value="1">1 час</option>
+                                        <option value="2">2 часа</option>
+                                        <option value="3">3 часа</option>
+                                        <option value="4">4 часа</option>
+                                    </select>
+                                </label>
                             </div>
                             <div class="breakdown-item">
-                                <span>Address</span>
+                                <span data-i18n="address">Address</span>
                                 <strong id="selected-location-address">Chui Avenue 123</strong>
                             </div>
                         </div>
@@ -245,8 +269,8 @@
 
                     <div class="payment-card dark-card">
                         <div class="payment-head">
-                            <span>Payment</span>
-                            <button class="mini-btn" type="button">Add Card</button>
+                            <span data-i18n="payment">Payment</span>
+                            <button class="mini-btn" type="button" data-i18n="addCard">Add Card</button>
                         </div>
 
                         <div class="payment-methods" role="group" aria-label="Payment method">
@@ -255,6 +279,7 @@
                             <button class="payment-method" type="button" data-payment="wallet">Wallet</button>
                             <button class="payment-method" type="button" data-payment="card">Card</button>
                         </div>
+                        <p class="payment-hint" id="payment-hint" data-i18n="mbankHint">Демо-оплата через MBank QR</p>
 
                         <div class="credit-card">
                             <div class="chip-row-card">
@@ -270,31 +295,99 @@
 
                         <div class="pricing-box">
                             <div class="price-row">
-                                <span>Base rate</span>
+                                <span data-i18n="baseRate">Base rate</span>
                                 <strong id="base-rate">0 som</strong>
                             </div>
                             <div class="price-row">
-                                <span>Service fee</span>
+                                <span data-i18n="serviceFee">Service fee</span>
                                 <strong>0 som</strong>
                             </div>
                             <div class="price-row total">
-                                <span>Trip total</span>
+                                <span data-i18n="tripTotal">Trip total</span>
                                 <strong id="trip-total">0 som</strong>
                             </div>
                         </div>
 
                         <p class="form-message" id="booking-message" role="status"></p>
-                        <button class="primary-btn pay-btn" type="button">Confirm payment</button>
+                        <button class="primary-btn pay-btn" type="button" data-i18n="confirmPayment">Confirm payment</button>
                     </div>
                 </section>
+
+                <section class="screen" data-screen="profile">
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow accent" data-i18n="account">Аккаунт</span>
+                            <h3 data-i18n="profile">Профиль</h3>
+                        </div>
+                        <button class="secondary-btn logout-btn" type="button" data-i18n="logout">Выйти</button>
+                    </div>
+
+                    <div class="profile-card dark-card">
+                        <div class="profile-avatar">{{ request.user.first_name|default:"S"|slice:":1"|upper }}</div>
+                        <div>
+                            <h4>{{ request.user.get_full_name|default:"Гость SmartPark" }}</h4>
+                            <p class="profile-email">{{ request.user.email|default:"Войдите, чтобы видеть профиль" }}</p>
+                            <p class="profile-phone">{{ request.user.phone|default:"" }}</p>
+                        </div>
+                    </div>
+
+                    {% if request.user.is_authenticated %}
+                        <div class="profile-form dark-card">
+                            <label class="input-group"><span data-i18n="fullName">Полное имя</span><input id="profile-name" type="text" value="{{ request.user.get_full_name }}"></label>
+                            <label class="input-group"><span data-i18n="emailOrPhone">Email</span><input id="profile-email" type="email" value="{{ request.user.email }}"></label>
+                            <label class="input-group"><span data-i18n="phoneNumber">Телефон</span><input id="profile-phone" type="tel" value="{{ request.user.phone }}"></label>
+                            <p class="form-message" id="profile-message" role="status"></p>
+                            <button class="primary-btn save-profile" type="button" data-i18n="saveProfile">Сохранить профиль</button>
+                        </div>
+
+                        <div class="profile-form dark-card">
+                            <h4 data-i18n="changePassword">Изменить пароль</h4>
+                            <label class="input-group"><span data-i18n="currentPassword">Текущий пароль</span><input id="current-password" type="password"></label>
+                            <label class="input-group"><span data-i18n="newPassword">Новый пароль</span><input id="new-password" type="password"></label>
+                            <label class="input-group"><span data-i18n="confirmPassword">Повторите новый пароль</span><input id="confirm-password" type="password"></label>
+                            <p class="form-message" id="password-message" role="status"></p>
+                            <button class="secondary-btn change-password" type="button" data-i18n="updatePassword">Обновить пароль</button>
+                        </div>
+                    {% endif %}
+
+                    <div class="wallet-summary dark-card">
+                        <span data-i18n="walletBalance">Баланс кошелька</span>
+                        <strong>{{ request.user.wallet_balance|default:"0.00" }} сом</strong>
+                    </div>
+
+                    <div class="history-section">
+                        <div class="section-heading">
+                            <h4 data-i18n="history">История бронирований</h4>
+                            <button class="mini-btn history-refresh" type="button" data-i18n="refresh">Обновить</button>
+                        </div>
+                        <div class="history-list" id="history-list">
+                            {% for booking in bookings %}
+                                <article class="history-item" data-spot-id="{{ booking.spot_id }}">
+                                    <div>
+                                        <strong>{{ booking.spot.location.name }}</strong>
+                                        <span>Место {{ booking.spot.number }} · {{ booking.start_time|date:"d.m.Y H:i" }}</span>
+                                    </div>
+                                    <div class="history-actions">
+                                        <b>{{ booking.amount }} сом</b>
+                                        {% if booking.is_active %}
+                                            <button class="cancel-booking mini-btn" type="button" data-booking-id="{{ booking.id }}" data-i18n="cancel">Отменить</button>
+                                        {% endif %}
+                                    </div>
+                                </article>
+                            {% empty %}
+                                <p class="empty-state" data-i18n="noBookings">Бронирований пока нет</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+
             </main>
 
             <nav class="bottom-nav" aria-label="Bottom navigation">
-                <button class="nav-item active" type="button" data-target="splash">Home</button>
-                <button class="nav-item" type="button" data-target="auth">Auth</button>
-                <button class="nav-item" type="button" data-target="card">Card</button>
-                <button class="nav-item" type="button" data-target="map">Map</button>
-                <button class="nav-item" type="button" data-target="booking">Book</button>
+                <button class="nav-item active" type="button" data-target="splash" data-i18n="home">Home</button>
+                <button class="nav-item" type="button" data-target="map" data-i18n="map">Map</button>
+                <button class="nav-item" type="button" data-target="booking" data-i18n="book">Book</button>
+                <button class="nav-item" type="button" data-target="profile" data-i18n="profile">Профиль</button>
             </nav>
         </div>
     </div>
@@ -302,5 +395,10 @@
     {{ locations_data|json_script:"locations-data" }}
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="{% static 'parking/js/app.js' %}"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>
