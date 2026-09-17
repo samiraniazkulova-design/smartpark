@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc">
+  <title id="title">SmartPark Bishkek</title>
+  <desc id="desc">Blue spiral parking mark with SmartPark Bishkek wordmark</desc>
+  <rect width="720" height="220" rx="30" fill="#0a0d12"/>
+  <g transform="translate(36 34)">
+    <circle cx="76" cy="76" r="70" fill="#0e1622" stroke="#55a9ff" stroke-width="5"/>
+    <path d="M76 25c31 0 56 22 56 50 0 27-22 48-50 48-26 0-47-18-47-41 0-22 18-39 41-39 20 0 36 13 36 30 0 15-12 27-28 27-13 0-23-8-23-19 0-9 8-17 18-17" fill="none" stroke="#72c7ff" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="78" cy="64" r="8" fill="#fff"/>
+  </g>
+  <text x="190" y="106" fill="#fff" font-family="Arial, sans-serif" font-size="46" font-weight="700" letter-spacing="4">SMARTPARK</text>
+  <text x="194" y="150" fill="#72c7ff" font-family="Arial, sans-serif" font-size="25" font-weight="600" letter-spacing="8">BISHKEK</text>
+</svg>

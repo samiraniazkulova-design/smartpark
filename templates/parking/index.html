@@ -1,0 +1,306 @@
+﻿{% load static %}
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <title>SmartPark Bishkek</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <link rel="stylesheet" href="{% static 'parking/css/style.css' %}">
+</head>
+<body>
+    {% csrf_token %}
+    <div class="app-shell">
+        <div class="phone-frame">
+            <header class="topbar">
+                <div class="brand-wrap">
+                    <img class="brand-logo" src="{% static 'parking/img/smartpark-logo.svg' %}" alt="SmartPark Bishkek">
+                    <div class="brand-copy">
+                        <span class="eyebrow">SmartPark</span>
+                        <h2>Bishkek</h2>
+                    </div>
+                </div>
+                <button class="theme-toggle" type="button" aria-label="Toggle theme">
+                    <span class="theme-icon">☀</span>
+                </button>
+            </header>
+
+            <main class="screen-stack">
+                <section class="screen active" data-screen="splash">
+                    <div class="splash-wrap">
+                        <img class="splash-logo" src="{% static 'parking/img/smartpark-logo.svg' %}" alt="SmartPark Bishkek">
+
+                        <div class="hero-illustration" aria-hidden="true">
+                            <div class="car-shadow"></div>
+                            <div class="car-body">
+                                <span class="window left"></span>
+                                <span class="window right"></span>
+                                <span class="light"></span>
+                                <span class="wheel front"></span>
+                                <span class="wheel back"></span>
+                            </div>
+                        </div>
+
+                        <div class="splash-copy">
+                            <span class="eyebrow accent">Premium parking</span>
+                            <h1>SmartPark Bishkek</h1>
+                            <p>Reserve a safe place, save time, and drive into the city with confidence.</p>
+                        </div>
+
+                        <button class="primary-btn get-started" type="button">Get Started</button>
+                    </div>
+                </section>
+
+                <section class="screen" data-screen="auth">
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow accent">Secure access</span>
+                            <h3>Welcome back</h3>
+                        </div>
+                    </div>
+
+                    <div class="auth-tabs">
+                        <button class="tab active" type="button" data-auth="signin">Sign In</button>
+                        <button class="tab" type="button" data-auth="signup">Sign Up</button>
+                    </div>
+
+                    <div class="auth-form" id="auth-form">
+                        <label class="input-group signup-only" hidden>
+                            <span>Full name</span>
+                            <input id="auth-name" type="text" placeholder="Ivan Ivanov" autocomplete="name">
+                        </label>
+                        <label class="input-group">
+                            <span>Email or phone</span>
+                            <input id="auth-email" type="text" placeholder="you@example.com or +996..." autocomplete="username">
+                        </label>
+                        <label class="input-group signup-only" hidden>
+                            <span>Phone Number</span>
+                            <input id="auth-phone" type="tel" placeholder="+996 555 123 456" autocomplete="tel">
+                        </label>
+                        <label class="input-group">
+                            <span>Password</span>
+                            <input id="auth-password" type="password" placeholder="Minimum 8 characters" autocomplete="current-password">
+                        </label>
+
+                        <div class="otp-boxes" id="otp-boxes" aria-label="Verification code" hidden>
+                            <input type="text" maxlength="1" inputmode="numeric">
+                            <input type="text" maxlength="1" inputmode="numeric">
+                            <input type="text" maxlength="1" inputmode="numeric">
+                            <input type="text" maxlength="1" inputmode="numeric">
+                            <input type="text" maxlength="1" inputmode="numeric">
+                            <input type="text" maxlength="1" inputmode="numeric">
+                        </div>
+
+                        <p class="form-message" id="auth-message" role="status"></p>
+                        <button class="primary-btn auth-submit" type="button">Continue</button>
+                        <button class="secondary-btn otp-submit" type="button" hidden>Verify OTP</button>
+                    </div>
+                </section>
+
+                <section class="screen" data-screen="card">
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow accent">Wallet</span>
+                            <h3>Add Card</h3>
+                        </div>
+                    </div>
+
+                    <div class="card-form dark-card">
+                        <label class="input-group">
+                            <span>Cardholder name</span>
+                               <input id="card-holder" type="text" value="Bektur Kadyrov" aria-label="Cardholder name">
+                        </label>
+
+                        <label class="input-group">
+                            <span>Card number</span>
+                               <input id="card-number" type="text" value="" placeholder="4242 4242 4242 4421" aria-label="Card number" inputmode="numeric">
+                        </label>
+
+                        <div class="card-row">
+                            <label class="input-group small">
+                                <span>Expiry</span>
+                                   <input id="card-expiry" type="text" value="12/28" aria-label="Expiry date">
+                            </label>
+                            <label class="input-group small">
+                                <span>CVV</span>
+                                   <input id="card-cvv" type="password" value="" placeholder="***" aria-label="CVV" inputmode="numeric">
+                            </label>
+                        </div>
+
+                        <button class="primary-btn save-card-btn" type="button">Save Card</button>
+                           <p class="form-message" id="card-message" role="status"></p>
+                    </div>
+                </section>
+
+                <section class="screen" data-screen="map">
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow accent">Explore</span>
+                            <h3>Parking spots</h3>
+                        </div>
+                        <button class="secondary-btn" id="map-mode" type="button">Satellite</button>
+                    </div>
+
+                    <label class="search-box" aria-label="Search location">
+                        <span class="search-icon">⌕</span>
+                        <input id="location-search" type="search" placeholder="Search Location" aria-label="Search Location">
+                    </label>
+
+                    <div class="quick-filters">
+                        <button class="filter-chip active" type="button">Nearby</button>
+                        <button class="filter-chip" type="button">Open</button>
+                        <button class="filter-chip" type="button">Covered</button>
+                    </div>
+
+                    <div class="map-shell">
+                        <div id="map" aria-label="Bishkek parking map"></div>
+                    </div>
+
+                    <div class="location-list">
+                        {% if locations %}
+                            {% for location in locations %}
+                                <article class="location-card" data-location-id="{{ location.id }}" data-spot-id="{{ location.first_free_spot_id|default:'' }}" data-name="{{ location.name }}" data-address="{{ location.address }}" data-free="{{ location.free_spots }}" data-price="{{ location.price }}">
+                                    <div class="location-row">
+                                        <div>
+                                            <h4>{{ location.name }}</h4>
+                                            <p>{{ location.address }}</p>
+                                        </div>
+                                        <span class="distance">2 min</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span><strong>{{ location.free_spots }}</strong> free</span>
+                                        <span>{% if location.price == 0 %}Free{% else %}{{ location.price }} som/hr{% endif %}</span>
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        {% else %}
+                            <article class="location-card active" data-spot-id="" data-name="Asia Mall" data-address="Chui Avenue 123" data-free="18" data-price="0">
+                                <div class="location-row">
+                                    <div>
+                                        <h4>Asia Mall</h4>
+                                        <p>Chui Avenue 123</p>
+                                    </div>
+                                    <span class="distance">2 min</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span><strong>18</strong> free</span>
+                                    <span>Free</span>
+                                </div>
+                            </article>
+
+                            <article class="location-card" data-spot-id="" data-name="Bishkek Park" data-address="Toktogul Street 21" data-free="12" data-price="100">
+                                <div class="location-row">
+                                    <div>
+                                        <h4>Bishkek Park</h4>
+                                        <p>Toktogul Street 21</p>
+                                    </div>
+                                    <span class="distance">4 min</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span><strong>12</strong> free</span>
+                                    <span>100 som/hr</span>
+                                </div>
+                            </article>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="screen" data-screen="booking">
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow accent">Reservation</span>
+                            <h3>Booking</h3>
+                        </div>
+                        <span class="booking-snippet">#245118</span>
+                    </div>
+
+                    <div class="booking-card dark-card">
+                        <div class="booking-hero">
+                            <div>
+                                <p class="label">Parking Garage</p>
+                                <h4 id="selected-location-name">Asia Mall</h4>
+                            </div>
+                            <span class="status-pill">Open</span>
+                        </div>
+
+                        <div class="booking-breakdown">
+                            <div class="breakdown-item">
+                                <span>Parking slot</span>
+                                <strong>A-04</strong>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>Duration</span>
+                                <strong>09:00 - 12:00</strong>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>Address</span>
+                                <strong id="selected-location-address">Chui Avenue 123</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="payment-card dark-card">
+                        <div class="payment-head">
+                            <span>Payment</span>
+                            <button class="mini-btn" type="button">Add Card</button>
+                        </div>
+
+                        <div class="payment-methods" role="group" aria-label="Payment method">
+                            <button class="payment-method active" type="button" data-payment="mbank">MBank QR</button>
+                            <button class="payment-method" type="button" data-payment="optima">Optima QR</button>
+                            <button class="payment-method" type="button" data-payment="wallet">Wallet</button>
+                            <button class="payment-method" type="button" data-payment="card">Card</button>
+                        </div>
+
+                        <div class="credit-card">
+                            <div class="chip-row-card">
+                                <span class="chip-cash"></span>
+                                <span class="chip-cash small"></span>
+                            </div>
+                            <strong>**** 4421</strong>
+                            <div class="card-meta">
+                                <span>VISA</span>
+                                <span>12/28</span>
+                            </div>
+                        </div>
+
+                        <div class="pricing-box">
+                            <div class="price-row">
+                                <span>Base rate</span>
+                                <strong id="base-rate">0 som</strong>
+                            </div>
+                            <div class="price-row">
+                                <span>Service fee</span>
+                                <strong>0 som</strong>
+                            </div>
+                            <div class="price-row total">
+                                <span>Trip total</span>
+                                <strong id="trip-total">0 som</strong>
+                            </div>
+                        </div>
+
+                        <p class="form-message" id="booking-message" role="status"></p>
+                        <button class="primary-btn pay-btn" type="button">Confirm payment</button>
+                    </div>
+                </section>
+            </main>
+
+            <nav class="bottom-nav" aria-label="Bottom navigation">
+                <button class="nav-item active" type="button" data-target="splash">Home</button>
+                <button class="nav-item" type="button" data-target="auth">Auth</button>
+                <button class="nav-item" type="button" data-target="card">Card</button>
+                <button class="nav-item" type="button" data-target="map">Map</button>
+                <button class="nav-item" type="button" data-target="booking">Book</button>
+            </nav>
+        </div>
+    </div>
+
+    {{ locations_data|json_script:"locations-data" }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="{% static 'parking/js/app.js' %}"></script>
+</body>
+</html>
